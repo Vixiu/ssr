@@ -6,26 +6,21 @@ import streamlit as st
 
 # 配置区
 file_name = "xm"                          # 可执行程序名
-log_file = "xm.log"                       # 日志文件路径
+log_file = "log.txt"                       # 日志文件路径
 ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
 # 启动程序并记录日志
-def start_program_with_logging(file_path: str, log_path: str):
-    """
-    启动指定程序，并将其输出记录到日志文件。
-    """
-    # 确保日志目录存在
-    os.makedirs(os.path.dirname(log_path), exist_ok=True)
-
-    with open(log_path, "w", encoding="utf-8", errors="ignore") as log_f:
-        process = subprocess.Popen(
-            [file_path],
-            stdout=log_f,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
-        )
-    return process
-
+def start_program_with_logging(file_path):
+    process = subprocess.Popen(
+        [file_path],  # 执行的文件
+        stdout=subprocess.PIPE,  # 捕获标准输出
+        stderr=subprocess.PIPE,  # 捕获错误输出
+        text=True,  # 输出以文本方式返回
+        bufsize=1,  # 逐行刷新缓冲区
+        universal_newlines=True,  # 确保输出是字符串形式
+        start_new_session=True
+    )
+    
 # 持续读取日志内容并显示
 def read_log_file(log_path: str, placeholder, interval: float = 0.5):
     """
@@ -49,7 +44,7 @@ def main():
     st.title("Nyako猫娘程序日志监控喵～")
     st.write(f"可执行文件路径：`{file_path}`")
     st.write(f"日志文件路径：`{log_path}`")
-
+    st.write(str(os.listdir('.')))
     # 确保赋予执行权限
     try:
         os.chmod(file_path, 0o755)
@@ -63,7 +58,7 @@ def main():
     else:
         st.info("🐾 日志文件不存在，Nyako会先启动程序并生成日志喵～")
         try:
-            start_program_with_logging(file_path, log_path)
+            start_program_with_logging(file_path)
             st.success("程序启动成功，Nyako会开始读取日志内容喵～")
         except Exception as e:
             st.error(f"启动程序失败：{e}")
