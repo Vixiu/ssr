@@ -16,22 +16,17 @@ st.title("Nyako猫娘进程监控喵～")
 st.write("如果程序已在运行，Nyako直接读取它的日志输出；如果没在运行，就先启动并把输出写到日志，然后再读取喵～")
 
 # 1. 用 pgrep 判断程序是否已经在运行（不依赖任何第三方库）
-def is_program_running(executable_name: str) -> bool:
-    """
-    在 Linux 上用 pgrep -f 去查找包含 executable_name 的进程，
-    如果找到任何 PID，就返回 True，否则返回 False。
-    """
+def is_program_running(executable_name) -> bool:
     try:
-        # "-f" 选项会在整个命令行中查找，而不仅仅是进程名
         result = subprocess.run(
-            ["pgrep", "-f", executable_name],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL
+            [executable_name],
+            capture_output=True, text=True, timeout=5
         )
-        # 如果 stdout 非空，说明有匹配的进程
-        return bool(result.stdout.strip())
+        if result.returncode == 0:
+            return True
+        else:
+            return False
     except Exception as e:
-        # 如果系统没有 pgrep 或者遇到其他异常，就认为没运行
         return False
 
 # 2. 启动程序并把 stdout/stderr 全部重定向到日志文件
@@ -88,7 +83,7 @@ def main():
         pass  # 如果报错（例如文件不存在），就忽略
 
     # 判断程序是否已经在运行
-    already_running = is_program_running(executable_name)
+    already_running = is_program_running(file_path)
 
     log_placeholder = st.empty()  # 预留一个位置，后面写日志
 
