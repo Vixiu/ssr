@@ -8,7 +8,7 @@ ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
 # 获取文件路径
 file_path = os.path.join(os.getcwd(), file_name)
-
+st.write(file_path)
 # 赋予执行权限
 os.chmod(file_path, 0o755)
 
@@ -24,7 +24,7 @@ try:
         universal_newlines=True  # 确保输出是字符串形式
     )
 
-    print("执行中，输出内容如下喵～：")
+    st.write("执行中，输出内容如下喵～：")
 
     # 持续读取标准输出
     for line in process.stdout:
