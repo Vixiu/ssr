@@ -1,6 +1,7 @@
 import os
 import subprocess
 import streamlit as st
+import re
 # 文件名
 file_name = "xm"
 ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
