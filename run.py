@@ -14,7 +14,7 @@ ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 # Streamlit 页面标题和说明
 st.title("Nyako猫娘进程监控喵～")
 st.write("如果程序已在运行，Nyako直接读取它的日志输出；如果没在运行，就先启动并把输出写到日志，然后再读取喵～")
-
+st.write("v1")
 # 1. 用 pgrep 判断程序是否已经在运行（不依赖任何第三方库）
 def is_program_running(executable_name) -> bool:
     try:
