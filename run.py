@@ -3,6 +3,7 @@ import subprocess
 import streamlit as st
 # 文件名
 file_name = "xm"
+ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
 # 获取文件路径
 file_path = os.path.join(os.getcwd(), file_name)
@@ -26,7 +27,8 @@ try:
 
     # 持续读取标准输出
     for line in process.stdout:
-        st.write(line.strip())  # 去除换行符并打印
+        clean_line = ansi_escape.sub('', line.strip())  # 去除 ANSI 转义字符
+        st.write(clean_line)  # 打印清理后的内容
 
     # 检查是否有错误输出
     stderr = process.stderr.read()
