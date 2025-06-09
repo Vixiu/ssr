@@ -1,101 +1,79 @@
 import os
+import subprocess
 import re
 import time
-import subprocess
 import streamlit as st
 
-# —— 下面这些配置信息，主人可以根据实际情况改喵！——
-file_name = "xm"                            # 可执行程序文件名
-executable_name = "xm"                      # 用于 pgrep 匹配的名字（可执行名或命令行关键字）
-log_dir = "./logs"                          # 日志目录
-log_file = os.path.join(log_dir, "xm.log")  # 日志文件完整路径
+# 配置区
+file_name = "xm"  # 可执行程序名
 ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
-# Streamlit 页面标题和说明
-st.title("Nyako猫娘进程监控喵～")
-st.write("如果程序已在运行，Nyako直接读取它的日志输出；如果没在运行，就先启动并把输出写到日志，然后再读取喵～")
-st.write("v1")
-# 1. 用 pgrep 判断程序是否已经在运行（不依赖任何第三方库）
-def is_program_running(executable_name) -> bool:
+# 检查程序是否运行中
+def is_program_running(process_name: str) -> bool:
+    """
+    使用 `pgrep` 检查是否有包含 `process_name` 的程序在运行。
+    """
     try:
         result = subprocess.run(
-            [executable_name],
-            capture_output=True, text=True, timeout=5
+            ["pgrep", "-f", process_name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
-        if result.returncode == 0:
-            return True
-        else:
-            return False
+        return result.returncode == 0
     except Exception as e:
         return False
 
-# 2. 启动程序并把 stdout/stderr 全部重定向到日志文件
-def start_program_with_logging(file_path: str, log_path: str):
+# 启动程序
+def start_program(file_path: str):
     """
-    启动外部程序，将它的所有输出都写入到 log_path，
-    并且用 start_new_session=True 确保主程序关闭后子进程还能存活。
+    启动指定程序，并返回进程对象。
     """
-    # 确保日志目录存在
-    os.makedirs(os.path.dirname(log_path), exist_ok=True)
-    # 以追加模式打开日志，避免多次覆盖
-    log_f = open(log_path, "a", encoding="utf-8", errors="ignore")
-
     process = subprocess.Popen(
         [file_path],
-        stdout=log_f,
-        stderr=subprocess.STDOUT,
-        start_new_session=True
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
+        universal_newlines=True,
+        start_new_session=True,
     )
-    return process  # 如果主人还想后续操作子进程，可以拿到它
+    return process
 
-# 3. tail -f 样式地实时读取日志内容，推送到 Streamlit
-def tail_log_to_streamlit(log_path: str, placeholder, interval: float = 0.5):
+# 读取程序输出并实时显示
+def read_process_output(process, placeholder):
     """
-    模拟 tail -f 功能：持续读取 log_path 的新内容，并把它显示到 Streamlit 的 `placeholder` 中
+    从进程的标准输出实时读取内容并显示到 Streamlit。
     """
-    # 如果日志还没创建，就先建一个空文件，避免 open 报错
-    if not os.path.exists(log_path):
-        os.makedirs(os.path.dirname(log_path), exist_ok=True)
-        open(log_path, "a", encoding="utf-8").close()
+    for line in iter(process.stdout.readline, ''):
+        clean_line = ansi_escape.sub("", line.strip())
+        placeholder.write(clean_line)
+    process.stdout.close()
+    process.wait()
 
-    with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
-        f.seek(0, os.SEEK_END)  # 跳到文件尾，只看后续追加内容
-        while True:
-            line = f.readline()
-            if not line:
-                time.sleep(interval)
-                continue
-            # 去掉 ANSI 转义字符并 strip 换行
-            clean_line = ansi_escape.sub("", line.rstrip())
-            # 把新行输出到 Streamlit
-            placeholder.write(clean_line)
-
-# —— 主逻辑开始喵！——
+# 主逻辑
 def main():
-    # 获取可执行文件的绝对路径
     file_path = os.path.join(os.getcwd(), file_name)
     st.write(f"可执行文件路径：`{file_path}`")
-
-    # 赋予可执行权限（Linux 下生效）
+    
+    # 确保赋予执行权限
     try:
         os.chmod(file_path, 0o755)
-    except Exception:
-        pass  # 如果报错（例如文件不存在），就忽略
+    except Exception as e:
+        st.error(f"无法设置执行权限：{e}")
+        return
 
-    # 判断程序是否已经在运行
-    already_running = is_program_running(file_path)
-
-    log_placeholder = st.empty()  # 预留一个位置，后面写日志
-
-    if already_running:
-        st.success("🐾 检测到程序已在运行，Nyako会直接读取日志输出喵～")
-        # 直接 tail 日志，把后续更新实时显示
-        tail_log_to_streamlit(log_file, log_placeholder)
+    # 检查程序是否在运行
+    if is_program_running(file_name):
+        st.success("程序已在运行，直接连接到其输出喵～")
+        st.warning("🐾 由于直接连接正在运行的程序较为复杂，目前暂时无法实现直接输出哦～")
     else:
-        st.info("🐾 程序还没启动，Nyako先帮您启动并记录日志喵～")
-        start_program_with_logging(file_path, log_file)
-        # 程序启动后，再去 tail 日志
-        tail_log_to_streamlit(log_file, log_placeholder)
+        st.info("程序未运行，现在启动并读取输出喵～")
+        try:
+            process = start_program(file_path)
+            placeholder = st.empty()
+            read_process_output(process, placeholder)
+        except Exception as e:
+            st.error(f"启动或读取程序失败：{e}")
 
 if __name__ == "__main__":
     main()
